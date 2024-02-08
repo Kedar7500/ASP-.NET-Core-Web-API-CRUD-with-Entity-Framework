@@ -10,13 +10,27 @@ namespace ContactsAPI
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            // Add services to the container.
+            // Add logging
+            builder.Logging.AddConsole();
+            var loggerFactory = LoggerFactory.Create(builder => builder.AddConsole());
+            var logger = loggerFactory.CreateLogger<Program>();
 
+            // Add services to the container.
             builder.Services.AddControllers();
-            // Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
-            builder.Services.AddEndpointsApiExplorer();
-            builder.Services.AddSwaggerGen();
-            builder.Services.AddDbContext<ContactsAPIDBContext>(options => options.UseInMemoryDatabase("ContactsDB"));
+
+            // Add DbContext
+            builder.Services.AddDbContext<ContactsAPIDBContext>(options =>
+            {
+                var connectionString = builder.Configuration.GetConnectionString("Connections:ContactsApiConnectionString")
+                ?? "Server=KEDARLAPTOP\\SQLEXPRESS;Database=ContactsDb1;Trusted_Connection=True";
+
+                if (string.IsNullOrEmpty(connectionString))
+                {
+                    logger.LogError("Connection string 'ContactsApiConnectionString' not found.");
+                    throw new InvalidOperationException("Connection string 'ContactsApiConnectionString' not found.");
+                }
+                options.UseSqlServer(connectionString);
+            });
 
             var app = builder.Build();
 
@@ -28,12 +42,8 @@ namespace ContactsAPI
             }
 
             app.UseHttpsRedirection();
-
             app.UseAuthorization();
-
-
             app.MapControllers();
-
             app.Run();
         }
     }
